@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdlib>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -43,16 +45,26 @@ int main(void) {
     cudaMemcpy(device_matrix_1, matrix_1, n_bytes, cudaMemcpyHostToDevice);
     cudaMemcpy(device_matrix_2, matrix_2, n_bytes, cudaMemcpyHostToDevice);
 
+    cout << "Defining events and timevals to calculate GPU & CPU time..." << endl;
+    struct timeval cpu_start, cpu_end;
+    cudaEvent_t gpu_start, gpu_end;
+    cudaEventCreate(&gpu_start);
+    cudaEventCreate(&gpu_end);
+
     cout << "Defining & calling kernel..." << endl;
     int block_size = 1024;
     int blocks_count = (matrix_entries / block_size) + (matrix_entries % block_size != 0);
+    cudaEventRecord(gpu_start, 0);
     matrixProduct<<<blocks_count, block_size>>>(device_matrix_1, device_matrix_2, device_result_matrix, matrix_size);
+    cudaEventRecord(gpu_end, 0);
+    cudaEventSynchronize(gpu_end);
 
     cout << "Copying DEVICE variables to HOST variables..." << endl;
     cudaMemcpy(result_matrix, device_result_matrix, n_bytes, cudaMemcpyDeviceToHost);
 
     cout << "Checking result..." << endl;
     bool pass = true;
+    gettimeofday(&cpu_start, NULL);
     for (int i = 0; i < matrix_size; i++) {
         for (int j = 0; j < matrix_size; j++) {
             float product = 0.0;
@@ -68,12 +80,24 @@ int main(void) {
         if (!pass)
             break;
     }
+    gettimeofday(&cpu_end, NULL);
     if (pass)
         cout << "Passed!" << endl;
     else
         cout << "Failed!" << endl;
 
+    cout << "Calculating GPU & CPU time..." << endl;
+    float gpu_elapsed_time;
+    cudaEventElapsedTime(&gpu_elapsed_time, gpu_start, gpu_end);
+    long seconds = cpu_end.tv_sec - cpu_start.tv_sec;
+    long useconds = cpu_end.tv_usec - cpu_start.tv_usec;
+    double cpu_elapsed_time = ((seconds) * 1000 + useconds / 1000.0);
+    cout << "GPU time: " << gpu_elapsed_time << "ms" << endl;
+    cout << "CPU time: " << cpu_elapsed_time << "ms" << endl;
+    
     cout << "Freeing resources..." << endl;
+    cudaEventDestroy(gpu_start);
+    cudaEventDestroy(gpu_end);
     free(matrix_1);
     free(matrix_2);
     free(result_matrix);
