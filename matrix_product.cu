@@ -111,7 +111,7 @@ int main(void) {
     long useconds = cpu_end.tv_usec - cpu_start.tv_usec;
     double cpu_elapsed_time = ((seconds) * 1000 + useconds / 1000.0);
 #elif defined(_WIN32)
-    double cpu_elapsed_time = ((double)(cpu_end - cpu_start) / (double)CLOCKS_PER_SEC);
+    double cpu_elapsed_time = ((double)(cpu_end - cpu_start) / (double)CLOCKS_PER_SEC * 1000);
 #endif
     cout << "GPU time: " << gpu_elapsed_time << "ms" << endl;
     cout << "CPU time: " << cpu_elapsed_time << "ms" << endl;
