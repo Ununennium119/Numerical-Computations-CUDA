@@ -1,6 +1,11 @@
 #include <iostream>
 #include <cstdlib>
+
+#if defined(unix)
 #include <sys/time.h>
+#elif defined(_WIN32)
+#include <time.h>
+#endif
 
 using namespace std;
 
@@ -46,7 +51,11 @@ int main(void) {
     cudaMemcpy(device_matrix_2, matrix_2, n_bytes, cudaMemcpyHostToDevice);
 
     cout << "Defining events and timevals to calculate GPU & CPU time..." << endl;
+#if defined(unix)
     struct timeval cpu_start, cpu_end;
+#elif defined(_WIN32)
+    clock_t cpu_start, cpu_end;
+#endif
     cudaEvent_t gpu_start, gpu_end;
     cudaEventCreate(&gpu_start);
     cudaEventCreate(&gpu_end);
@@ -64,7 +73,11 @@ int main(void) {
 
     cout << "Checking result..." << endl;
     bool pass = true;
+#if defined(unix)
     gettimeofday(&cpu_start, NULL);
+#elif defined(_WIN32)
+    cpu_start = clock();
+#endif
     for (int i = 0; i < matrix_size; i++) {
         for (int j = 0; j < matrix_size; j++) {
             float product = 0.0;
@@ -80,7 +93,11 @@ int main(void) {
         if (!pass)
             break;
     }
+#if defined(unix)
     gettimeofday(&cpu_end, NULL);
+#elif defined(_WIN32)
+    cpu_end = clock();
+#endif
     if (pass)
         cout << "Passed!" << endl;
     else
@@ -89,9 +106,13 @@ int main(void) {
     cout << "Calculating GPU & CPU time..." << endl;
     float gpu_elapsed_time;
     cudaEventElapsedTime(&gpu_elapsed_time, gpu_start, gpu_end);
+#if defined(unix)
     long seconds = cpu_end.tv_sec - cpu_start.tv_sec;
     long useconds = cpu_end.tv_usec - cpu_start.tv_usec;
     double cpu_elapsed_time = ((seconds) * 1000 + useconds / 1000.0);
+#elif defined(_WIN32)
+    double cpu_elapsed_time = ((double)(cpu_end - cpu_start) / (double)CLOCKS_PER_SEC);
+#endif
     cout << "GPU time: " << gpu_elapsed_time << "ms" << endl;
     cout << "CPU time: " << cpu_elapsed_time << "ms" << endl;
     
